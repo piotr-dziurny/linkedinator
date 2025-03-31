@@ -8,6 +8,7 @@ function App() {
   const [generatedContent, setGeneratedContent] = useState("")
   const [isGenerating, setIsGenerating] = useState(false)
   const [language, setLanguage] = useState("English") // Default language
+  const [errorMessage, setErrorMessage] = useState("")
 
 const translations = {
   English: {
@@ -19,7 +20,8 @@ const translations = {
     generating: "Generating...",
     resultTitle: "Your Linkedin post",
     copyButton: "Copy to clipboard",
-    copiedMessage: "Successfully copied!"
+    copiedMessage: "Successfully copied!",
+    errorMessage: "An error occurred. Please try again."
   },
   Polish: {
     subtitle: "Wygeneruj angażujący post na Linkedin idealnie dostosowany do Twojego poziomu zawodowego",
@@ -30,7 +32,8 @@ const translations = {
     generating: "Generowanie...",
     resultTitle: "Twój profesjonalny post na Linkedin",
     copyButton: "Kopiuj do schowka",
-    copiedMessage: "Pomyślnie skopiowano!"
+    copiedMessage: "Pomyślnie skopiowano!",
+    errorMessage: "Wystąpił błąd. Spróbuj ponownie."
   }
 };
   
@@ -47,25 +50,55 @@ const translations = {
     setSelectedRole(role)
   }
    
-  // Generate role-based content
-  const generateRoleBasedContent = (topic, role, language) => {
-    return `${topic}, ${role}, ${language} - This is a test.`  
-  }
-
   // Handle content generation
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
     if (!topic.trim() || !selectedRole) return
+    
+    // Reset any previous errors
+    setErrorMessage("")
     
     // Show loading state
     setIsGenerating(true)
     setGeneratedContent("")
     
-    // Simulate content generation
-    setTimeout(() => {
-      const roleBasedContent = generateRoleBasedContent(topic, selectedRole, language)
-      setGeneratedContent(roleBasedContent)
+    try {
+      // Prepare the data for the API request
+      const requestData = {
+        role: selectedRole,
+        language: language,
+        prompt: topic
+      }
+      
+      // Make the API call to the backend
+      const response = await fetch("http://localhost:8000/generate", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(requestData)
+      })
+      
+      // Check if response is successful
+      if (!response.ok) {
+        throw new Error(`HTTP error - Status: ${response.status}`)
+      }
+      
+      // Parse the JSON response
+      const data = await response.json()
+      
+      // Check if there's an error in the response
+      if (data.error) {
+        throw new Error(data.error)
+      }
+      
+      // Set the generated content
+      setGeneratedContent(data.result)
+    } catch (error) {
+      console.error("Error generating content:", error)
+      setErrorMessage(t.errorMessage)
+    } finally {
       setIsGenerating(false)
-    }, 1000)
+    }
   }
     
   return (
@@ -87,11 +120,11 @@ const translations = {
         </header>
         
         <div className="content-generator-container">
-          {/* Role Selector Component */}
+          {/* Role selector component */}
           <div className="form-section">
             <h2 className="section-title">{t.roleTitle}</h2>
             <div className="role-options">
-              {["Junior", "Regular", "Senior", "Staff", "Director", "VP"].map((role) => (
+              {["Junior", "Regular", "Senior", "VP"].map((role) => (
                 <div 
                   key={role} 
                   className={`role-option ${selectedRole === role ? "selected" : ""}`}
@@ -110,7 +143,7 @@ const translations = {
             </div>
           </div>
           
-          {/* Topic Input */}
+          {/* Prompt input */}
           <div className="form-section">
             <h2 className="section-title">{t.topicTitle}</h2>
             <div className="topic-input-container">
@@ -124,7 +157,7 @@ const translations = {
             </div>
           </div>
           
-          {/* Generate Button */}
+          {/* Generate button */}
           <div className="form-section">
             <button 
               className="generate-button"
@@ -133,9 +166,16 @@ const translations = {
             >
               {isGenerating ? t.generating : t.generateButton}
             </button>
+            
+            {/* Display error message if there is one */}
+            {errorMessage && (
+              <div className="error-message">
+                {errorMessage}
+              </div>
+            )}
           </div>
           
-          {/* Generated Content Display */}
+          {/* Generated content display */}
           {generatedContent && (
             <div className="form-section result-section">
             <h2 className="section-title">{t.resultTitle}</h2>
