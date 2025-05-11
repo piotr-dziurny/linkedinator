@@ -70,7 +70,8 @@ const translations = {
       }
       
       // Make the API call to the backend
-      const response = await fetch("http://localhost:8000/generate", {
+      const backend_url = import.meta.env.VITE_BACKEND_URL
+      const response = await fetch(`${backend_url}/generate`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
